@@ -185,6 +185,9 @@ func (dms *DiskMetricStore) GetMetricFamilies() []*dto.MetricFamily {
 			}
 		}
 	}
+
+	// clean
+	dms.metricGroups = GroupingKeyToMetricGroup{}
 	return result
 }
 
