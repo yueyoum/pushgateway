@@ -108,6 +108,26 @@ func NewDiskMetricStore(
 
 // SubmitWriteRequest implements the MetricStore interface.
 func (dms *DiskMetricStore) SubmitWriteRequest(req WriteRequest) {
+	_, jobExists := req.Labels["job"]
+	_, insExists := req.Labels["instance"]
+	_, upExists := req.MetricFamilies["up"]
+
+	if jobExists && insExists && !upExists {
+		// write extra up metric
+		req.MetricFamilies["up"] = &dto.MetricFamily{
+			Name: proto.String("up"),
+			Help: nil,
+			Type: (*dto.MetricType)(proto.Int32(int32(dto.MetricType_COUNTER))),
+			Metric: []*dto.Metric{
+				&dto.Metric{
+					Counter: &dto.Counter{
+						Value: proto.Float64(1),
+					},
+				},
+			},
+		}
+	}
+
 	dms.writeQueue <- req
 }
 
@@ -139,8 +159,8 @@ func (dms *DiskMetricStore) Ready() error {
 
 // GetMetricFamilies implements the MetricStore interface.
 func (dms *DiskMetricStore) GetMetricFamilies() []*dto.MetricFamily {
-	dms.lock.RLock()
-	defer dms.lock.RUnlock()
+	dms.lock.Lock()
+	defer dms.lock.Unlock()
 
 	result := []*dto.MetricFamily{}
 	mfStatByName := map[string]mfStat{}
